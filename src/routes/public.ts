@@ -121,25 +121,98 @@ app.post('/registro', async (c) => {
     return c.redirect('/registro?err=' + encodeURIComponent('Completá los campos obligatorios'));
   }
 
-  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE nick = ? OR phone = ?')
-    .bind(nick, phone)
-    .first();
-  if (existing) return c.redirect('/registro?err=' + encodeURIComponent('Nick o teléfono ya registrado'));
+  const byPhone = await c.env.DB.prepare(
+    'SELECT id, nick, is_temp, merged_into FROM users WHERE phone = ?',
+  ).bind(phone).first<any>();
+  const byNick = await c.env.DB.prepare(
+    'SELECT id, phone FROM users WHERE nick = ? COLLATE NOCASE',
+  ).bind(nick).first<any>();
+
+  if (byPhone && byPhone.is_temp === 1 && !byPhone.merged_into) {
+    if (byNick && byNick.id !== byPhone.id) {
+      return c.redirect('/registro?err=' + encodeURIComponent('Ese nick ya está en uso. Elegí otro.'));
+    }
+    const body = html`
+      <div class="card" style="max-width:680px">
+        <h1>¿Sos ${byPhone.nick}?</h1>
+        <p>Encontramos un usuario temporal con este número de teléfono: <strong>${byPhone.nick}</strong>.</p>
+        <p class="small">Si sos vos, reclamá la cuenta para conservar el historial y los pronósticos cargados por el admin.</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3>Sí, soy yo</h3>
+            <form method="post" action="/registro/reclamar" class="grid">
+              <input type="hidden" name="temp_user_id" value="${byPhone.id}" />
+              <input type="hidden" name="nick" value="${nick}" />
+              <input type="hidden" name="real_name" value="${realName}" />
+              <input type="hidden" name="phone" value="${phone}" />
+              <input type="hidden" name="bank_name" value="${bankName}" />
+              <input type="hidden" name="bank_alias" value="${bankAlias}" />
+              <input type="hidden" name="pin" value="${pin}" />
+              <button type="submit">Reclamar cuenta</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3>No, no soy yo</h3>
+            <p class="small">No se puede crear otra cuenta con el mismo número. Podés registrarte con otro número y pedirle al admin que fusione las cuentas, o pedirle al admin que corrija el número del usuario temporal.</p>
+            <p><a href="/registro">Volver al registro</a></p>
+          </div>
+        </div>
+      </div>`;
+    return c.html(layout({ title: 'Reclamar cuenta', user: null, body: String(body), flash: null }));
+  }
+
+  if (byPhone) return c.redirect('/registro?err=' + encodeURIComponent('Ese teléfono ya está registrado'));
+  if (byNick) return c.redirect('/registro?err=' + encodeURIComponent('Ese nick ya está en uso'));
 
   const count = await c.env.DB.prepare('SELECT COUNT(*) as c FROM users').first<{ c: number }>();
-  const role = (count?.c || 0) === 0 ? 'admin' : 'player'; // primer usuario = admin bootstrap
+  const role = (count?.c || 0) === 0 ? 'admin' : 'player';
   const id = createId();
   const pinHash = await hashPin(pin);
 
   await c.env.DB.prepare(
-    `INSERT INTO users (id,nick,real_name,phone,bank_name,bank_alias,pin_hash,role,active,created_at)
-     VALUES (?,?,?,?,?,?,?,?,1,?)`,
+    `INSERT INTO users (id,nick,real_name,phone,bank_name,bank_alias,pin_hash,role,active,is_temp,created_at)
+     VALUES (?,?,?,?,?,?,?,?,1,0,?)`,
   )
     .bind(id, nick, realName, phone, bankName, bankAlias, pinHash, role, nowIso())
     .run();
 
   await createSession(c, id);
   return c.redirect('/?ok=' + encodeURIComponent('Cuenta creada'));
+});
+
+app.post('/registro/reclamar', async (c) => {
+  const form = await c.req.parseBody();
+  const tempUserId = String(form.temp_user_id || '').trim();
+  const nick = String(form.nick || '').trim();
+  const realName = String(form.real_name || '').trim();
+  const phone = String(form.phone || '').trim();
+  const bankName = String(form.bank_name || '').trim();
+  const bankAlias = String(form.bank_alias || '').trim();
+  const pin = String(form.pin || '');
+
+  if (!tempUserId || !nick || !realName || !phone || pin.length < 4) {
+    return c.redirect('/registro?err=' + encodeURIComponent('Datos incompletos para reclamar cuenta'));
+  }
+
+  const temp = await c.env.DB.prepare(
+    'SELECT id, phone, is_temp, merged_into FROM users WHERE id = ?',
+  ).bind(tempUserId).first<any>();
+  if (!temp || temp.is_temp !== 1 || temp.merged_into || temp.phone !== phone) {
+    return c.redirect('/registro?err=' + encodeURIComponent('No se pudo reclamar la cuenta temporal'));
+  }
+
+  const nickUsed = await c.env.DB.prepare(
+    'SELECT id FROM users WHERE nick = ? COLLATE NOCASE AND id != ?',
+  ).bind(nick, tempUserId).first<any>();
+  if (nickUsed) return c.redirect('/registro?err=' + encodeURIComponent('Ese nick ya está en uso. Elegí otro.'));
+
+  const pinHash = await hashPin(pin);
+  await c.env.DB.prepare(
+    `UPDATE users SET nick=?, real_name=?, phone=?, bank_name=?, bank_alias=?, pin_hash=?, is_temp=0, active=1 WHERE id=?`,
+  ).bind(nick, realName, phone, bankName, bankAlias, pinHash, tempUserId).run();
+
+  await createSession(c, tempUserId);
+  return c.redirect('/?ok=' + encodeURIComponent('Cuenta reclamada correctamente'));
 });
 
 app.post('/logout', async (c) => {

@@ -160,18 +160,57 @@ app.post('/partidos/:id/resultado', async (c) => {
 
 app.get('/usuarios', async (c) => {
   const users = await c.env.DB.prepare(
-    `SELECT id,nick,real_name,phone,bank_name,bank_alias,role,active,created_at FROM users ORDER BY created_at DESC`,
+    `SELECT id,nick,real_name,phone,bank_name,bank_alias,role,active,is_temp,merged_into,created_at
+     FROM users ORDER BY active DESC, is_temp DESC, created_at DESC`,
   ).all<any>();
+  const activeUsers = (users.results || []).filter((u: any) => !u.merged_into);
+
   const body = html`
     <div class="card">
       <h1>Usuarios</h1>
-      <p class="small">Datos privados visibles solo para admin.</p>
+      <p class="small">Datos privados visibles solo para admin. Los usuarios temporales pueden ser reclamados al registrarse con el mismo teléfono, o fusionados manualmente.</p>
+    </div>
+
+    <div class="card">
+      <h2>Crear usuario temporal</h2>
+      <form method="post" action="/admin/usuarios/temporal" class="grid grid-2">
+        <label>Nick <input name="nick" required maxlength="30" /></label>
+        <label>Nombre real <input name="real_name" required maxlength="80" /></label>
+        <label>Teléfono <input name="phone" required maxlength="30" /></label>
+        <label>Banco <input name="bank_name" maxlength="60" /></label>
+        <label>Alias/cuenta bancaria <input name="bank_alias" maxlength="60" /></label>
+        <div style="display:flex;align-items:end"><button type="submit">Crear temporal</button></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Fusionar usuarios</h2>
+      <p class="small">Usalo cuando exista un usuario temporal y un usuario registrado que deban quedar como uno solo. Las predicciones y pagos mensuales se mueven al usuario destino.</p>
+      <form method="post" action="/admin/usuarios/fusionar" class="row">
+        <label>Usuario origen (se fusiona y desactiva)
+          <select name="source_id" required>
+            <option value="">Seleccionar...</option>
+            ${activeUsers.map((u: any) => html`<option value="${u.id}">${u.nick} — ${u.phone} ${u.is_temp ? '(temporal)' : ''}</option>`)}
+          </select>
+        </label>
+        <label>Usuario destino (queda activo)
+          <select name="target_id" required>
+            <option value="">Seleccionar...</option>
+            ${activeUsers.map((u: any) => html`<option value="${u.id}">${u.nick} — ${u.phone} ${u.is_temp ? '(temporal)' : ''}</option>`)}
+          </select>
+        </label>
+        <button type="submit">Fusionar</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Listado</h2>
       <table>
-        <thead><tr><th>Nick</th><th>Nombre real</th><th>Teléfono</th><th>Banco</th><th>Alias</th><th>Rol</th><th>Activo</th><th>Nuevo PIN</th><th>Guardar</th></tr></thead>
+        <thead><tr><th>Nick</th><th>Nombre real</th><th>Teléfono</th><th>Banco</th><th>Alias</th><th>Rol</th><th>Estado</th><th>Nuevo PIN</th><th>Guardar</th></tr></thead>
         <tbody>
           ${(users.results || []).map((u: any) => html`
             <tr>
-              <td><input form="f-${u.id}" name="nick" value="${u.nick}" /></td>
+              <td><input form="f-${u.id}" name="nick" value="${u.nick}" /> ${u.is_temp ? html`<span class="badge">temporal</span>` : ''} ${u.merged_into ? html`<span class="badge">fusionado</span>` : ''}</td>
               <td><input form="f-${u.id}" name="real_name" value="${u.real_name}" /></td>
               <td><input form="f-${u.id}" name="phone" value="${u.phone}" /></td>
               <td><input form="f-${u.id}" name="bank_name" value="${u.bank_name || ''}" /></td>
@@ -182,7 +221,7 @@ app.get('/usuarios', async (c) => {
                   <option value="admin" ${u.role==='admin'?'selected':''}>admin</option>
                 </select>
               </td>
-              <td><select form="f-${u.id}" name="active"><option value="1" ${u.active?'selected':''}>sí</option><option value="0" ${!u.active?'selected':''}>no</option></select></td>
+              <td><select form="f-${u.id}" name="active"><option value="1" ${u.active?'selected':''}>activo</option><option value="0" ${!u.active?'selected':''}>inactivo</option></select></td>
               <td><input form="f-${u.id}" name="new_pin" type="password" minlength="4" placeholder="opcional" /></td>
               <td>
                 <form id="f-${u.id}" method="post" action="/admin/usuarios/${u.id}"></form>
@@ -194,6 +233,79 @@ app.get('/usuarios', async (c) => {
       </table>
     </div>`;
   return c.html(layout({ title: 'Usuarios', user: c.get('user'), body: String(body), flash: flash(c) }));
+});
+
+app.post('/usuarios/temporal', async (c) => {
+  const form = await c.req.parseBody();
+  const nick = String(form.nick || '').trim();
+  const realName = String(form.real_name || '').trim();
+  const phone = String(form.phone || '').trim();
+  const bankName = String(form.bank_name || '').trim();
+  const bankAlias = String(form.bank_alias || '').trim();
+
+  if (!nick || !realName || !phone) {
+    return c.redirect('/admin/usuarios?err=' + encodeURIComponent('Completá nick, nombre real y teléfono'));
+  }
+
+  const exists = await c.env.DB.prepare('SELECT id FROM users WHERE nick = ? COLLATE NOCASE OR phone = ?')
+    .bind(nick, phone).first<any>();
+  if (exists) return c.redirect('/admin/usuarios?err=' + encodeURIComponent('Ya existe un usuario con ese nick o teléfono'));
+
+  const pinHash = await hashPin(createId()); // PIN inutilizable hasta que reclame
+  await c.env.DB.prepare(
+    `INSERT INTO users (id,nick,real_name,phone,bank_name,bank_alias,pin_hash,role,active,is_temp,created_at)
+     VALUES (?,?,?,?,?,?,?,'player',1,1,?)`,
+  ).bind(createId(), nick, realName, phone, bankName, bankAlias, pinHash, nowIso()).run();
+
+  return c.redirect('/admin/usuarios?ok=' + encodeURIComponent('Usuario temporal creado'));
+});
+
+app.post('/usuarios/fusionar', async (c) => {
+  const form = await c.req.parseBody();
+  const sourceId = String(form.source_id || '').trim();
+  const targetId = String(form.target_id || '').trim();
+
+  if (!sourceId || !targetId) return c.redirect('/admin/usuarios?err=' + encodeURIComponent('Seleccioná origen y destino'));
+  if (sourceId === targetId) return c.redirect('/admin/usuarios?err=' + encodeURIComponent('Origen y destino no pueden ser el mismo usuario'));
+
+  const source = await c.env.DB.prepare('SELECT * FROM users WHERE id=?').bind(sourceId).first<any>();
+  const target = await c.env.DB.prepare('SELECT * FROM users WHERE id=?').bind(targetId).first<any>();
+  if (!source || !target) return c.redirect('/admin/usuarios?err=' + encodeURIComponent('Usuario no encontrado'));
+  if (source.merged_into) return c.redirect('/admin/usuarios?err=' + encodeURIComponent('El usuario origen ya fue fusionado'));
+
+  // Mover predicciones: si el destino ya tiene predicción para ese partido, se conserva la del destino.
+  const sourcePreds = await c.env.DB.prepare('SELECT * FROM predictions WHERE user_id=?').bind(sourceId).all<any>();
+  const targetPreds = await c.env.DB.prepare('SELECT match_id FROM predictions WHERE user_id=?').bind(targetId).all<any>();
+  const targetMatchIds = new Set((targetPreds.results || []).map((p: any) => p.match_id));
+
+  const stmts: D1PreparedStatement[] = [];
+  for (const p of (sourcePreds.results || [])) {
+    if (targetMatchIds.has(p.match_id)) {
+      stmts.push(c.env.DB.prepare('DELETE FROM predictions WHERE match_id=? AND user_id=?').bind(p.match_id, sourceId));
+    } else {
+      stmts.push(c.env.DB.prepare('UPDATE predictions SET user_id=? WHERE match_id=? AND user_id=?').bind(targetId, p.match_id, sourceId));
+    }
+  }
+
+  // Mover pagos mensuales: si hay conflicto, conservar el del destino.
+  const sourcePays = await c.env.DB.prepare('SELECT * FROM monthly_payouts WHERE user_id=?').bind(sourceId).all<any>();
+  const targetPays = await c.env.DB.prepare('SELECT month FROM monthly_payouts WHERE user_id=?').bind(targetId).all<any>();
+  const targetMonths = new Set((targetPays.results || []).map((p: any) => p.month));
+  for (const p of (sourcePays.results || [])) {
+    if (targetMonths.has(p.month)) {
+      stmts.push(c.env.DB.prepare('DELETE FROM monthly_payouts WHERE month=? AND user_id=?').bind(p.month, sourceId));
+    } else {
+      stmts.push(c.env.DB.prepare('UPDATE monthly_payouts SET user_id=? WHERE month=? AND user_id=?').bind(targetId, p.month, sourceId));
+    }
+  }
+
+  stmts.push(c.env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(sourceId));
+  stmts.push(c.env.DB.prepare(
+    `UPDATE users SET active=0, is_temp=0, merged_into=?, phone=?, nick=?, pin_hash=? WHERE id=?`,
+  ).bind(targetId, `merged:${sourceId}`, `merged:${sourceId.slice(0, 8)}`, await hashPin(createId()), sourceId));
+
+  await c.env.DB.batch(stmts);
+  return c.redirect('/admin/usuarios?ok=' + encodeURIComponent(`Usuarios fusionados: ${source.nick} -> ${target.nick}`));
 });
 
 app.post('/usuarios/:id', async (c) => {

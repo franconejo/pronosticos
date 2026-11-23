@@ -19,6 +19,8 @@ export interface User {
   google_sub: string | null;
   role: Role;
   active: number;
+  is_temp: number;
+  merged_into: string | null;
   created_at: string;
 }
 

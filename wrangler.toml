@@ -13,4 +13,4 @@ APP_NAME = "Juego del Pronóstico"
 [[d1_databases]]
 binding = "DB"
 database_name = "pronostico-db"
-database_id = "REEMPLAZAR_CON_TU_DATABASE_ID"
+database_id = "8d9d68ad-a723-4109-ba26-74ca8fb2ea42"

@@ -15,6 +15,8 @@ Juego financiado por el **Ing. Fernando Javier Saldaña Ingolotti**, en colabora
 ## Qué hace la aplicación
 
 - **Registro de jugadores**: nick público, nombre real, teléfono, banco y alias/cuenta bancaria. Los datos sensibles quedan visibles solo para el administrador.
+- **Usuarios temporales**: el administrador puede crear usuarios temporales para quienes todavía no ingresaron al link. Si luego la persona se registra con el mismo número de teléfono, el sistema le permite reclamar esa cuenta y conservar su historial.
+- **Fusión de cuentas**: si hace falta, el administrador puede fusionar un usuario temporal con un usuario registrado, trasladando pronósticos y premios mensuales.
 - **Login**: acceso con teléfono y PIN.
 - **Gestión de partidos**: el administrador crea partidos, define horario de cierre, premio base y carga el resultado final.
 - **Carga de pronósticos**: cada jugador puede cargar o editar su pronóstico mientras el partido esté abierto y antes del cierre.

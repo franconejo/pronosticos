@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   google_sub TEXT UNIQUE,
   role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'admin')),
   active INTEGER NOT NULL DEFAULT 1,
+  is_temp INTEGER NOT NULL DEFAULT 0,
+  merged_into TEXT REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

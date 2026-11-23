@@ -1,0 +1,16 @@
+name = "pronostico"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+
+[assets]
+directory = "./public"
+
+[vars]
+APP_NAME = "Juego del Pronóstico"
+
+# Crear la base con: npx wrangler d1 create pronostico-db
+# Luego reemplazar database_id por el real.
+[[d1_databases]]
+binding = "DB"
+database_name = "pronostico-db"
+database_id = "REEMPLAZAR_CON_TU_DATABASE_ID"

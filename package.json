@@ -1,0 +1,21 @@
+{
+  "name": "pronostico",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute pronostico-db --local --file=src/db/schema.sql",
+    "db:init:remote": "wrangler d1 execute pronostico-db --remote --file=src/db/schema.sql",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260301.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.0.0"
+  }
+}

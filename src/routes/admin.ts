@@ -56,28 +56,28 @@ app.get('/', async (c) => {
 
     <div class="card">
       <h2>Partidos</h2>
-      <table>
+      <table class="table-stack">
         <thead><tr><th>Partido</th><th>Inicio</th><th>Cierre</th><th>Base</th><th>Estado</th><th>Resultado</th><th>Acciones</th></tr></thead>
         <tbody>
           ${(matches.results || []).map((m) => html`
             <tr>
-              <td><a href="/partidos/${m.id}">${m.home_team} vs ${m.away_team}</a></td>
-              <td>${formatDateTime(m.kickoff_at)}</td>
-              <td>${formatDateTime(m.closes_at)}</td>
-              <td>${m.base_prize.toLocaleString('es-PY')}</td>
-              <td><span class="badge" style="${m.status === 'finished' ? '' : m.status === 'open' ? 'background:#E8F5EC;color:#15803D;border-color:#CDE7D6' : 'background:#FEF3C7;color:#92400E;border-color:#FDE68A'}">${m.status === 'open' ? 'Abierto' : m.status === 'closed' ? 'Cerrado' : 'Finalizado'}</span></td>
-              <td>${m.status === 'finished' ? html`${m.home_score}-${m.away_score}${m.penalty_winner ? ` (${m.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''}` : '-'}${m.is_knockout ? html` <span class="badge">KO</span>` : ''}</td>
-              <td>
+              <td data-label="Partido"><a href="/partidos/${m.id}">${m.home_team} vs ${m.away_team}</a>${m.is_knockout ? html` <span class="badge">KO</span>` : ''}</td>
+              <td data-label="Inicio">${formatDateTime(m.kickoff_at)}</td>
+              <td data-label="Cierre">${formatDateTime(m.closes_at)}</td>
+              <td data-label="Base">${m.base_prize.toLocaleString('es-PY')} Gs</td>
+              <td data-label="Estado"><span class="badge" style="${m.status === 'finished' ? '' : m.status === 'open' ? 'background:#E8F5EC;color:#15803D;border-color:#CDE7D6' : 'background:#FEF3C7;color:#92400E;border-color:#FDE68A'}">${m.status === 'open' ? 'Abierto' : m.status === 'closed' ? 'Cerrado' : 'Finalizado'}</span></td>
+              <td data-label="Resultado">${m.status === 'finished' ? html`${m.home_score}-${m.away_score}${m.penalty_winner ? ` (${m.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''}` : '-'}</td>
+              <td data-label="Acciones">
                 ${m.status !== 'finished' ? html`
                   <form class="inline" method="post" action="/admin/partidos/${m.id}/cerrar">
                     <button class="secondary" type="submit">Cerrar</button>
                   </form>
-                ` : ''}
+                ` : html`<span class="muted">-</span>`}
               </td>
             </tr>
             ${m.status !== 'finished' ? html`
             <tr>
-              <td colspan="7">
+              <td data-label="" colspan="7">
                 <form method="post" action="/admin/partidos/${m.id}/resultado" class="row">
                   <label>Goles ${m.home_team} <input type="number" name="home_score" min="0" max="99" required /></label>
                   <label>Goles ${m.away_team} <input type="number" name="away_score" min="0" max="99" required /></label>
@@ -94,7 +94,7 @@ app.get('/', async (c) => {
               </td>
             </tr>` : ''}
           `)}
-          ${!(matches.results || []).length ? html`<tr><td colspan="7" class="muted">Sin partidos.</td></tr>` : ''}
+          ${!(matches.results || []).length ? html`<tr><td data-label="" colspan="7" class="muted">Sin partidos.</td></tr>` : ''}
         </tbody>
       </table>
     </div>`;
@@ -284,25 +284,25 @@ app.get('/usuarios', async (c) => {
 
     <div class="card">
       <h2>Listado</h2>
-      <table>
+      <table class="table-stack">
         <thead><tr><th>Nick</th><th>Nombre real</th><th>Teléfono</th><th>Banco</th><th>Alias</th><th>Rol</th><th>Estado</th><th>Nuevo PIN</th><th>Guardar</th></tr></thead>
         <tbody>
           ${(users.results || []).map((u: any) => html`
             <tr>
-              <td><input form="f-${u.id}" name="nick" value="${u.nick}" /> ${u.is_temp ? html`<span class="badge">temporal</span>` : ''} ${u.merged_into ? html`<span class="badge">fusionado</span>` : ''}</td>
-              <td><input form="f-${u.id}" name="real_name" value="${u.real_name}" /></td>
-              <td><input form="f-${u.id}" name="phone" value="${u.phone}" /></td>
-              <td><input form="f-${u.id}" name="bank_name" value="${u.bank_name || ''}" /></td>
-              <td><input form="f-${u.id}" name="bank_alias" value="${u.bank_alias || ''}" /></td>
-              <td>
+              <td data-label="Nick"><input form="f-${u.id}" name="nick" value="${u.nick}" /> ${u.is_temp ? html`<span class="badge">temporal</span>` : ''} ${u.merged_into ? html`<span class="badge">fusionado</span>` : ''}</td>
+              <td data-label="Nombre real"><input form="f-${u.id}" name="real_name" value="${u.real_name}" /></td>
+              <td data-label="Teléfono"><input form="f-${u.id}" name="phone" value="${u.phone}" /></td>
+              <td data-label="Banco"><input form="f-${u.id}" name="bank_name" value="${u.bank_name || ''}" /></td>
+              <td data-label="Alias"><input form="f-${u.id}" name="bank_alias" value="${u.bank_alias || ''}" /></td>
+              <td data-label="Rol">
                 <select form="f-${u.id}" name="role">
                   <option value="player" ${u.role==='player'?'selected':''}>player</option>
                   <option value="admin" ${u.role==='admin'?'selected':''}>admin</option>
                 </select>
               </td>
-              <td><select form="f-${u.id}" name="active"><option value="1" ${u.active?'selected':''}>activo</option><option value="0" ${!u.active?'selected':''}>inactivo</option></select></td>
-              <td><input form="f-${u.id}" name="new_pin" type="password" minlength="4" placeholder="opcional" /></td>
-              <td>
+              <td data-label="Estado"><select form="f-${u.id}" name="active"><option value="1" ${u.active?'selected':''}>activo</option><option value="0" ${!u.active?'selected':''}>inactivo</option></select></td>
+              <td data-label="Nuevo PIN"><input form="f-${u.id}" name="new_pin" type="password" minlength="4" placeholder="opcional" /></td>
+              <td data-label="">
                 <form id="f-${u.id}" method="post" action="/admin/usuarios/${u.id}"></form>
                 <button form="f-${u.id}" type="submit">Guardar</button>
               </td>
@@ -464,23 +464,23 @@ app.get('/mes', async (c) => {
     <div class="card">
       <h2>Sugerencia / aprobación</h2>
       <form method="post" action="/admin/mes/${month}/aprobar">
-        <table>
+        <table class="table-stack">
           <thead><tr><th>Nick</th><th>Puntos</th><th>Exactos</th><th>Ganador</th><th>Sugerido</th><th>Final (editable)</th><th>Nota</th></tr></thead>
           <tbody>
             ${(rows.results || []).map((r: any) => {
               const s = suggestionByUser[r.user_id];
               return html`
                 <tr>
-                  <td>${r.nick}<input type="hidden" name="user_id" value="${r.user_id}" /></td>
-                  <td>${r.points}<input type="hidden" name="points_${r.user_id}" value="${r.points}" /></td>
-                  <td>${r.exact_hits}<input type="hidden" name="exact_${r.user_id}" value="${r.exact_hits}" /></td>
-                  <td>${r.winner_hits}<input type="hidden" name="winner_${r.user_id}" value="${r.winner_hits}" /></td>
-                  <td>${(s?.suggestedPrize || 0).toLocaleString('es-PY')} ${s?.needsReview ? html`<span class="badge">revisar</span>` : ''}<input type="hidden" name="suggested_${r.user_id}" value="${s?.suggestedPrize || 0}" /></td>
-                  <td><input type="number" name="final_${r.user_id}" value="${s?.suggestedPrize || 0}" min="0" /></td>
-                  <td><input name="note_${r.user_id}" value="${s?.reason || ''}" /></td>
+                  <td data-label="Nick"><strong>${r.nick}</strong><input type="hidden" name="user_id" value="${r.user_id}" /></td>
+                  <td data-label="Puntos">${r.points}<input type="hidden" name="points_${r.user_id}" value="${r.points}" /></td>
+                  <td data-label="Exactos">${r.exact_hits}<input type="hidden" name="exact_${r.user_id}" value="${r.exact_hits}" /></td>
+                  <td data-label="Ganador">${r.winner_hits}<input type="hidden" name="winner_${r.user_id}" value="${r.winner_hits}" /></td>
+                  <td data-label="Sugerido">${(s?.suggestedPrize || 0).toLocaleString('es-PY')} ${s?.needsReview ? html`<span class="badge">revisar</span>` : ''}<input type="hidden" name="suggested_${r.user_id}" value="${s?.suggestedPrize || 0}" /></td>
+                  <td data-label="Final (Gs)"><input type="number" name="final_${r.user_id}" value="${s?.suggestedPrize || 0}" min="0" /></td>
+                  <td data-label="Nota"><input name="note_${r.user_id}" value="${s?.reason || ''}" /></td>
                 </tr>`;
             })}
-            ${!(rows.results || []).length ? html`<tr><td colspan="7" class="muted">No hay pronósticos finalizados en este mes.</td></tr>` : ''}
+            ${!(rows.results || []).length ? html`<tr><td data-label="" colspan="7" class="muted">No hay pronósticos finalizados en este mes.</td></tr>` : ''}
           </tbody>
         </table>
         <p style="margin-top:12px"><button type="submit">Aprobar premios del mes</button></p>

@@ -183,7 +183,6 @@ table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 640px;
 }
 th, td {
   padding: 12px 10px;
@@ -336,9 +335,40 @@ form.inline { display: inline; }
   .row { gap: 10px; }
   .row > * { flex: 1 1 100%; }
   .row > button, .row > .button, .row > a.badge { flex: 1 1 auto; }
-  table { min-width: 560px; }
-  th, td { padding: 10px 8px; }
+  table { min-width: 0; table-layout: fixed; }
+  th, td { padding: 8px 6px; font-size: 12px; word-break: break-word; }
+  th { font-size: 11px; letter-spacing: 0.02em; }
+  input, select, textarea { padding: 8px 8px; font-size: 13px; }
+  button, .button { padding: 9px 10px; font-size: 13px; }
   h1 { font-size: 32px; }
+
+  .table-stack thead { display: none; }
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td { display: block; width: 100%; min-width: 0; }
+  .table-stack tr {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-stack tr:last-child { border-bottom: none; padding-bottom: 0; }
+  .table-stack td {
+    padding: 5px 0;
+    border: none;
+    font-size: 13px;
+  }
+  .table-stack td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 3px;
+  }
+  .table-stack td[data-label=""]::before,
+  .table-stack td.no-label::before { display: none; }
 }
 
 @media (max-width: 420px) {

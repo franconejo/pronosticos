@@ -284,19 +284,19 @@ app.get('/tabla', async (c) => {
       <p class="small">Bolsas: 1° ${Number(config?.first_prize||80000).toLocaleString('es-PY')} · 2° ${Number(config?.second_prize||50000).toLocaleString('es-PY')} · 3° ${Number(config?.third_prize||30000).toLocaleString('es-PY')} Gs. Estado: ${config?.status || 'draft'}.</p>
     </div>
     <div class="card">
-      <table>
+      <table class="table-stack">
         <thead><tr><th>#</th><th>Nick</th><th>Puntos</th><th>Exactos</th><th>Ganador</th><th>Premio final</th></tr></thead>
         <tbody>
           ${(rows.results || []).map((r: any, i: number) => html`
             <tr>
-              <td>${i + 1}</td>
-              <td>${r.nick}</td>
-              <td><strong>${r.points}</strong></td>
-              <td>${r.exact_hits}</td>
-              <td>${r.winner_hits}</td>
-              <td>${Number(r.final_prize || 0).toLocaleString('es-PY')} Gs ${r.admin_override ? html`<span class="badge">manual</span>` : ''}</td>
+              <td data-label="Posición">${i + 1}</td>
+              <td data-label="Nick"><strong>${r.nick}</strong></td>
+              <td data-label="Puntos"><strong>${r.points}</strong></td>
+              <td data-label="Exactos">${r.exact_hits}</td>
+              <td data-label="Ganador">${r.winner_hits}</td>
+              <td data-label="Premio final">${Number(r.final_prize || 0).toLocaleString('es-PY')} Gs ${r.admin_override ? html`<span class="badge">manual</span>` : ''}</td>
             </tr>`)}
-          ${!(rows.results || []).length ? html`<tr><td colspan="6" class="muted">Sin datos para este mes.</td></tr>` : ''}
+          ${!(rows.results || []).length ? html`<tr><td data-label="" colspan="6" class="muted">Sin datos para este mes.</td></tr>` : ''}
         </tbody>
       </table>
     </div>`;

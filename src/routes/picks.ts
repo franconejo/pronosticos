@@ -161,17 +161,17 @@ app.get('/partidos/:id', async (c) => {
         </div>` : ''}
       </div>
       ${isAdmin ? html`<textarea id="wa-share" style="display:none;width:100%;height:140px;margin-top:8px">${shareText}</textarea>` : ''}
-      <table>
+      <table class="table-stack">
         <thead><tr><th>Nick</th><th>Pronóstico</th><th>Puntos</th><th>Premio</th></tr></thead>
         <tbody>
           ${(allPreds.results || []).map((p: any) => html`
             <tr>
-              <td>${p.nick}</td>
-              <td>${p.home_score} - ${p.away_score}${p.penalty_winner ? html` <span class="small">(${p.penalty_winner === 'home' ? match.home_team : match.away_team} pen.)</span>` : ''}</td>
-              <td>${p.points ?? '-'}</td>
-              <td>${Number(p.prize || 0).toLocaleString('es-PY')} Gs</td>
+              <td data-label="Nick"><strong>${p.nick}</strong></td>
+              <td data-label="Pronóstico">${p.home_score} - ${p.away_score}${p.penalty_winner ? html` <span class="small">(${p.penalty_winner === 'home' ? match.home_team : match.away_team} pen.)</span>` : ''}</td>
+              <td data-label="Puntos">${p.points ?? '-'}</td>
+              <td data-label="Premio">${Number(p.prize || 0).toLocaleString('es-PY')} Gs</td>
             </tr>`)}
-          ${!(allPreds.results || []).length ? html`<tr><td colspan="4" class="muted">Sin pronósticos.</td></tr>` : ''}
+          ${!(allPreds.results || []).length ? html`<tr><td data-label="" colspan="4" class="muted">Sin pronósticos.</td></tr>` : ''}
         </tbody>
       </table>
     </div>` : html`<div class="card"><p class="muted">Los pronósticos de los demás se muestran cuando se cierra el partido.</p></div>`}

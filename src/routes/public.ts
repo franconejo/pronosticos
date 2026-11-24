@@ -258,9 +258,9 @@ app.get('/tabla', async (c) => {
 
   const rows = await c.env.DB.prepare(
     `SELECT u.nick,
-            COALESCE(SUM(p.points),0) as points,
-            COALESCE(SUM(CASE WHEN p.points = 6 THEN 1 ELSE 0 END),0) as exact_hits,
-            COALESCE(SUM(CASE WHEN p.points = 3 THEN 1 ELSE 0 END),0) as winner_hits,
+            COALESCE(SUM(CASE WHEN m.id IS NOT NULL THEN p.points ELSE 0 END),0) as points,
+            COALESCE(SUM(CASE WHEN m.id IS NOT NULL AND p.points = 6 THEN 1 ELSE 0 END),0) as exact_hits,
+            COALESCE(SUM(CASE WHEN m.id IS NOT NULL AND p.points = 3 THEN 1 ELSE 0 END),0) as winner_hits,
             COALESCE(mp.final_prize, 0) as final_prize,
             COALESCE(mp.suggested_prize, 0) as suggested_prize,
             COALESCE(mp.admin_override, 0) as admin_override
@@ -270,7 +270,7 @@ app.get('/tabla', async (c) => {
      LEFT JOIN monthly_payouts mp ON mp.user_id = u.id AND mp.month = ?
      WHERE u.active = 1
      GROUP BY u.id
-     HAVING COUNT(p.match_id) > 0 OR COALESCE(mp.final_prize,0) > 0
+     HAVING COUNT(m.id) > 0 OR COALESCE(mp.final_prize,0) > 0
      ORDER BY points DESC, exact_hits DESC, winner_hits DESC, u.nick ASC`,
   ).bind(month, month).all<any>();
 

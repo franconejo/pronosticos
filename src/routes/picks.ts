@@ -30,6 +30,12 @@ app.get('/partidos/:id', async (c) => {
       .first<Prediction>();
   }
 
+  const adminUsers = user?.role === 'admin'
+    ? await c.env.DB.prepare(
+        `SELECT id, nick, is_temp FROM users WHERE active=1 AND merged_into IS NULL ORDER BY is_temp DESC, nick ASC`,
+      ).all<any>()
+    : { results: [] as any[] };
+
   const showAll = match.status !== 'open' || !open;
   const allPreds = showAll
     ? await c.env.DB.prepare(
@@ -75,6 +81,31 @@ app.get('/partidos/:id', async (c) => {
         ${myPred?.points != null ? html` · Puntos: <strong>${myPred.points}</strong> · Premio: <strong>${myPred.prize.toLocaleString('es-PY')} Gs</strong>` : ''}</p>
       ` : ''}
     </div>
+
+    ${user?.role === 'admin' && match.status !== 'finished' ? html`
+    <div class="card">
+      <h2>Cargar pronóstico (admin)</h2>
+      <p class="small">Usalo para cargar o corregir pronósticos de usuarios temporales o de quienes no pudieron entrar.</p>
+      <form method="post" action="/admin/partidos/${match.id}/pronostico" class="row">
+        <label>Usuario
+          <select name="user_id" required>
+            <option value="">Seleccionar...</option>
+            ${(adminUsers.results || []).map((u: any) => html`<option value="${u.id}">${u.nick}${u.is_temp ? ' (temporal)' : ''}</option>`)}
+          </select>
+        </label>
+        <label>${match.home_team} <input type="number" name="home_score" min="0" max="99" required /></label>
+        <label>${match.away_team} <input type="number" name="away_score" min="0" max="99" required /></label>
+        ${match.is_knockout ? html`
+        <label>Si hay empate, gana por penales
+          <select name="penalty_winner">
+            <option value="">Elegir si es empate...</option>
+            <option value="home">${match.home_team}</option>
+            <option value="away">${match.away_team}</option>
+          </select>
+        </label>` : ''}
+        <button type="submit">Guardar pronóstico</button>
+      </form>
+    </div>` : ''}
 
     ${showAll ? html`
     <div class="card">

@@ -132,6 +132,50 @@ app.post('/partidos/:id/cerrar', async (c) => {
   return c.redirect('/admin?ok=' + encodeURIComponent('Partido cerrado'));
 });
 
+app.post('/partidos/:id/pronostico', async (c) => {
+  const id = c.req.param('id');
+  const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id=?').bind(id).first<Match>();
+  if (!match) return c.redirect('/admin?err=' + encodeURIComponent('Partido no encontrado'));
+  if (match.status === 'finished') {
+    return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('No se puede cargar pronóstico en un partido finalizado'));
+  }
+
+  const form = await c.req.parseBody();
+  const userId = String(form.user_id || '').trim();
+  const home = Number(form.home_score);
+  const away = Number(form.away_score);
+  if (!userId) return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('Seleccioná un usuario'));
+  if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0 || home > 99 || away > 99) {
+    return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('Marcador inválido'));
+  }
+
+  const targetUser = await c.env.DB.prepare('SELECT id FROM users WHERE id=? AND active=1 AND merged_into IS NULL').bind(userId).first<any>();
+  if (!targetUser) return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('Usuario no válido'));
+
+  const draw = home === away;
+  let penaltyWinner: 'home' | 'away' | null = null;
+  if (match.is_knockout && draw) {
+    const pw = String(form.penalty_winner || '');
+    if (pw !== 'home' && pw !== 'away') {
+      return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('En eliminatoria, si el pronóstico es empate debés elegir ganador por penales'));
+    }
+    penaltyWinner = pw;
+  }
+
+  const now = nowIso();
+  await c.env.DB.prepare(
+    `INSERT INTO predictions (match_id, user_id, home_score, away_score, penalty_winner, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(match_id, user_id) DO UPDATE SET
+       home_score=excluded.home_score,
+       away_score=excluded.away_score,
+       penalty_winner=excluded.penalty_winner,
+       updated_at=excluded.updated_at`,
+  ).bind(id, userId, home, away, penaltyWinner, now, now).run();
+
+  return c.redirect(`/partidos/${id}?ok=` + encodeURIComponent('Pronóstico cargado por el admin'));
+});
+
 app.post('/partidos/:id/resultado', async (c) => {
   const id = c.req.param('id');
   const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id=?').bind(id).first<Match>();

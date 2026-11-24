@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS matches (
   base_prize INTEGER NOT NULL CHECK (base_prize > 0),
   home_score INTEGER CHECK (home_score >= 0),
   away_score INTEGER CHECK (away_score >= 0),
+  is_knockout INTEGER NOT NULL DEFAULT 0,
+  penalty_winner TEXT CHECK (penalty_winner IN ('home', 'away')),
   status TEXT NOT NULL DEFAULT 'open'
     CHECK (status IN ('open', 'closed', 'finished')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -45,6 +47,7 @@ CREATE TABLE IF NOT EXISTS predictions (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   home_score INTEGER NOT NULL CHECK (home_score >= 0),
   away_score INTEGER NOT NULL CHECK (away_score >= 0),
+  penalty_winner TEXT CHECK (penalty_winner IN ('home', 'away')),
   points INTEGER,
   prize INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

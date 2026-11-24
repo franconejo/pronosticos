@@ -43,8 +43,8 @@ app.get('/partidos/:id', async (c) => {
       <h1>${match.home_team} vs ${match.away_team}</h1>
       <p class="small">Inicio: ${formatDateTime(match.kickoff_at)} · Cierra: ${formatDateTime(match.closes_at)}</p>
       <p>Premio base: <strong>${match.base_prize.toLocaleString('es-PY')} Gs</strong> · Si hay un solo ganador exacto: <strong>${(match.base_prize * 2).toLocaleString('es-PY')} Gs</strong></p>
-      <p>Estado: <span class="badge">${match.status}</span> ${open ? html`<span class="ok">Aceptando pronósticos</span>` : html`<span class="muted">Pronósticos cerrados</span>`}</p>
-      ${match.status === 'finished' ? html`<p><strong>Resultado final:</strong> ${match.home_score} - ${match.away_score}</p>` : ''}
+      <p>Estado: <span class="badge">${match.status}</span> ${match.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''} ${open ? html`<span class="ok">Aceptando pronósticos</span>` : html`<span class="muted">Pronósticos cerrados</span>`}</p>
+      ${match.status === 'finished' ? html`<p><strong>Resultado final:</strong> ${match.home_score} - ${match.away_score}${match.penalty_winner ? html` <span class="badge">Penales: ${match.penalty_winner === 'home' ? match.home_team : match.away_team}</span>` : ''}</p>` : ''}
     </div>
 
     <div class="card">
@@ -58,12 +58,20 @@ app.get('/partidos/:id', async (c) => {
           <label>${match.away_team}
             <input type="number" name="away_score" min="0" max="99" required value="${myPred?.away_score ?? ''}" />
           </label>
+          ${match.is_knockout ? html`
+          <label>Si hay empate, gana por penales
+            <select name="penalty_winner">
+              <option value="" ${!myPred?.penalty_winner ? 'selected' : ''}>Elegir si es empate...</option>
+              <option value="home" ${myPred?.penalty_winner === 'home' ? 'selected' : ''}>${match.home_team}</option>
+              <option value="away" ${myPred?.penalty_winner === 'away' ? 'selected' : ''}>${match.away_team}</option>
+            </select>
+          </label>` : ''}
           <button type="submit">${myPred ? 'Actualizar pronóstico' : 'Guardar pronóstico'}</button>
         </form>
         <p class="small">Podés editarlo mientras el partido esté abierto y antes del cierre.</p>
       ` : ''}
       ${user && !open ? html`
-        <p>${myPred ? html`Cargaste: <strong>${myPred.home_score} - ${myPred.away_score}</strong>` : 'No cargaste pronóstico para este partido.'}
+        <p>${myPred ? html`Cargaste: <strong>${myPred.home_score} - ${myPred.away_score}${myPred.penalty_winner ? ` (${myPred.penalty_winner === 'home' ? match.home_team : match.away_team} por penales)` : ''}</strong>` : 'No cargaste pronóstico para este partido.'}
         ${myPred?.points != null ? html` · Puntos: <strong>${myPred.points}</strong> · Premio: <strong>${myPred.prize.toLocaleString('es-PY')} Gs</strong>` : ''}</p>
       ` : ''}
     </div>
@@ -77,7 +85,7 @@ app.get('/partidos/:id', async (c) => {
           ${(allPreds.results || []).map((p: any) => html`
             <tr>
               <td>${p.nick}</td>
-              <td>${p.home_score} - ${p.away_score}</td>
+              <td>${p.home_score} - ${p.away_score}${p.penalty_winner ? html` <span class="small">(${p.penalty_winner === 'home' ? match.home_team : match.away_team} pen.)</span>` : ''}</td>
               <td>${p.points ?? '-'}</td>
               <td>${Number(p.prize || 0).toLocaleString('es-PY')} Gs</td>
             </tr>`)}
@@ -110,13 +118,26 @@ app.post('/partidos/:id/pronostico', async (c) => {
     return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('Marcador inválido'));
   }
 
+  const isDraw = home === away;
+  let penaltyWinner: 'home' | 'away' | null = null;
+  if (match.is_knockout && isDraw) {
+    const pw = String(form.penalty_winner || '');
+    if (pw !== 'home' && pw !== 'away') {
+      return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('En eliminatoria, si pronosticás empate debés elegir quién gana por penales'));
+    }
+    penaltyWinner = pw;
+  }
+
   await c.env.DB.prepare(
-    `INSERT INTO predictions (match_id, user_id, home_score, away_score, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+    `INSERT INTO predictions (match_id, user_id, home_score, away_score, penalty_winner, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(match_id, user_id) DO UPDATE SET
-       home_score=excluded.home_score, away_score=excluded.away_score, updated_at=excluded.updated_at`,
+       home_score=excluded.home_score,
+       away_score=excluded.away_score,
+       penalty_winner=excluded.penalty_winner,
+       updated_at=excluded.updated_at`,
   )
-    .bind(id, user.id, home, away, now, now)
+    .bind(id, user.id, home, away, penaltyWinner, now, now)
     .run();
 
   return c.redirect(`/partidos/${id}?ok=` + encodeURIComponent('Pronóstico guardado'));

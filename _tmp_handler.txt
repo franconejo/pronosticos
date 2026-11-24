@@ -1,0 +1,36 @@
+app.post('/partidos/:id/resultado', async (c) => {
+  const id = c.req.param('id');
+  const match = await c.env.DB.prepare('SELECT * FROM matches WHERE id=?').bind(id).first<Match>();
+  if (!match) return c.redirect('/admin?err=' + encodeURIComponent('Partido no encontrado'));
+  if (match.status === 'finished') return c.redirect('/admin?err=' + encodeURIComponent('El partido ya fue finalizado'));
+
+  const form = await c.req.parseBody();
+  const homeScore = Number(form.home_score);
+  const awayScore = Number(form.away_score);
+  if (![homeScore, awayScore].every((n) => Number.isInteger(n) && n >= 0 && n <= 99)) {
+    return c.redirect('/admin?err=' + encodeURIComponent('Marcador inválido'));
+  }
+
+  const preds = await c.env.DB.prepare('SELECT match_id, user_id, home_score, away_score FROM predictions WHERE match_id=?')
+    .bind(id).all<any>();
+  const results = (preds.results || []).map((p: any) => ({
+    userId: p.user_id as string,
+    points: calcPoints(p.home_score, p.away_score, homeScore, awayScore),
+  }));
+  const withPrizes = calcMatchPrizes(results, match.base_prize);
+
+  const stmts: D1PreparedStatement[] = [];
+  stmts.push(
+    c.env.DB.prepare(`UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?`)
+      .bind(homeScore, awayScore, id),
+  );
+  for (const r of withPrizes) {
+    stmts.push(
+      c.env.DB.prepare(`UPDATE predictions SET points=?, prize=? WHERE match_id=? AND user_id=?`)
+        .bind(r.points, r.prize, id, r.userId),
+    );
+  }
+  if (stmts.length) await c.env.DB.batch(stmts);
+
+  return c.redirect('/admin?ok=' + encodeURIComponent('Resultado cargado y puntos calculados'));
+});

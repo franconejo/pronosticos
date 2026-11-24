@@ -37,6 +37,7 @@ export interface Session {
 }
 
 export type MatchStatus = 'open' | 'closed' | 'finished';
+export type PenaltyWinner = 'home' | 'away' | null;
 
 export interface Match {
   id: string;
@@ -47,6 +48,8 @@ export interface Match {
   base_prize: number;
   home_score: number | null;
   away_score: number | null;
+  is_knockout: number;
+  penalty_winner: 'home' | 'away' | null;
   status: MatchStatus;
   created_at: string;
 }
@@ -56,6 +59,7 @@ export interface Prediction {
   user_id: string;
   home_score: number;
   away_score: number;
+  penalty_winner: 'home' | 'away' | null;
   points: number | null;
   prize: number;
   created_at: string;

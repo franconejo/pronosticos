@@ -5,7 +5,7 @@ import type { Bindings, Variables, Match } from '../types';
 import { layout } from '../views/layout';
 import { requireAdmin, hashPin, createId } from '../lib/auth';
 import { nowIso, formatDateTime, monthKey } from '../lib/time';
-import { calcPoints } from '../lib/scoring';
+import { calcMatchResults } from '../lib/scoring';
 import { calcMatchPrizes, suggestMonthlyPayouts } from '../lib/prizes';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
@@ -48,9 +48,10 @@ app.get('/', async (c) => {
             <option value="100000">100.000</option>
           </select>
         </label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="is_knockout" value="1" /> Eliminatoria (habilita penales en empate)</label>
         <div style="display:flex;align-items:end"><button type="submit">Crear partido</button></div>
       </form>
-      <p class="small">El premio por único ganador exacto se duplica automáticamente.</p>
+      <p class="small">El premio por único ganador exacto se duplica automáticamente. En eliminatorias, si hay empate, se debe indicar quién ganó por penales.</p>
     </div>
 
     <div class="card">
@@ -65,7 +66,7 @@ app.get('/', async (c) => {
               <td>${formatDateTime(m.closes_at)}</td>
               <td>${m.base_prize.toLocaleString('es-PY')}</td>
               <td>${m.status}</td>
-              <td>${m.status === 'finished' ? `${m.home_score}-${m.away_score}` : '-'}</td>
+              <td>${m.status === 'finished' ? html`${m.home_score}-${m.away_score}${m.penalty_winner ? ` (${m.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''}` : '-'}${m.is_knockout ? html` <span class="badge">KO</span>` : ''}</td>
               <td>
                 ${m.status !== 'finished' ? html`
                   <form class="inline" method="post" action="/admin/partidos/${m.id}/cerrar">
@@ -80,6 +81,14 @@ app.get('/', async (c) => {
                 <form method="post" action="/admin/partidos/${m.id}/resultado" class="row">
                   <label>Goles ${m.home_team} <input type="number" name="home_score" min="0" max="99" required /></label>
                   <label>Goles ${m.away_team} <input type="number" name="away_score" min="0" max="99" required /></label>
+                  ${m.is_knockout ? html`
+                  <label>Ganador por penales (si empate)
+                    <select name="penalty_winner">
+                      <option value="">No aplica</option>
+                      <option value="home">${m.home_team}</option>
+                      <option value="away">${m.away_team}</option>
+                    </select>
+                  </label>` : ''}
                   <button type="submit">Cargar resultado y calcular</button>
                 </form>
               </td>
@@ -107,10 +116,12 @@ app.post('/partidos', async (c) => {
     return c.redirect('/admin?err=' + encodeURIComponent('El cierre debe ser antes o igual al inicio'));
   }
 
+  const isKnockout = String(form.is_knockout || '') === '1' ? 1 : 0;
+
   await c.env.DB.prepare(
-    `INSERT INTO matches (id,home_team,away_team,kickoff_at,closes_at,base_prize,status,created_at)
-     VALUES (?,?,?,?,?,?, 'open', ?)`,
-  ).bind(createId(), homeTeam, awayTeam, kickoffAt, closesAt, basePrize, nowIso()).run();
+    `INSERT INTO matches (id,home_team,away_team,kickoff_at,closes_at,base_prize,is_knockout,status,created_at)
+     VALUES (?,?,?,?,?,?,?, 'open', ?)`,
+  ).bind(createId(), homeTeam, awayTeam, kickoffAt, closesAt, basePrize, isKnockout, nowIso()).run();
 
   return c.redirect('/admin?ok=' + encodeURIComponent('Partido creado'));
 });
@@ -134,18 +145,42 @@ app.post('/partidos/:id/resultado', async (c) => {
     return c.redirect('/admin?err=' + encodeURIComponent('Marcador inválido'));
   }
 
-  const preds = await c.env.DB.prepare('SELECT match_id, user_id, home_score, away_score FROM predictions WHERE match_id=?')
-    .bind(id).all<any>();
-  const results = (preds.results || []).map((p: any) => ({
-    userId: p.user_id as string,
-    points: calcPoints(p.home_score, p.away_score, homeScore, awayScore),
-  }));
-  const withPrizes = calcMatchPrizes(results, match.base_prize);
+  const draw = homeScore === awayScore;
+  let penaltyWinner: 'home' | 'away' | null = null;
+  if (match.is_knockout && draw) {
+    const pw = String(form.penalty_winner || '');
+    if (pw !== 'home' && pw !== 'away') {
+      return c.redirect('/admin?err=' + encodeURIComponent('En eliminatoria empatada, debés indicar quién ganó por penales'));
+    }
+    penaltyWinner = pw;
+  }
+
+  const preds = await c.env.DB.prepare(
+    'SELECT user_id, home_score, away_score, penalty_winner FROM predictions WHERE match_id=?',
+  ).bind(id).all<any>();
+
+  const scored = calcMatchResults(
+    {
+      realHome: homeScore,
+      realAway: awayScore,
+      isKnockout: !!match.is_knockout,
+      realPenaltyWinner: penaltyWinner,
+    },
+    (preds.results || []).map((p: any) => ({
+      userId: p.user_id as string,
+      predHome: p.home_score as number,
+      predAway: p.away_score as number,
+      predPenaltyWinner: (p.penalty_winner as 'home' | 'away' | null) ?? null,
+    })),
+  );
+
+  const withPrizes = calcMatchPrizes(scored, match.base_prize);
 
   const stmts: D1PreparedStatement[] = [];
   stmts.push(
-    c.env.DB.prepare(`UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?`)
-      .bind(homeScore, awayScore, id),
+    c.env.DB.prepare(
+      `UPDATE matches SET home_score=?, away_score=?, penalty_winner=?, status='finished' WHERE id=?`,
+    ).bind(homeScore, awayScore, penaltyWinner, id),
   );
   for (const r of withPrizes) {
     stmts.push(

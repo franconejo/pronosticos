@@ -18,12 +18,13 @@ Juego financiado por el **Ing. Fernando Javier Saldaña Ingolotti**, en colabora
 - **Usuarios temporales**: el administrador puede crear usuarios temporales para quienes todavía no ingresaron al link. Si luego la persona se registra con el mismo número de teléfono, el sistema le permite reclamar esa cuenta y conservar su historial.
 - **Fusión de cuentas**: si hace falta, el administrador puede fusionar un usuario temporal con un usuario registrado, trasladando pronósticos y premios mensuales.
 - **Login**: acceso con teléfono y PIN.
-- **Gestión de partidos**: el administrador crea partidos, define horario de cierre, premio base y carga el resultado final.
-- **Carga de pronósticos**: cada jugador puede cargar o editar su pronóstico mientras el partido esté abierto y antes del cierre.
+- **Gestión de partidos**: el administrador crea partidos, define horario de cierre, premio base, si es eliminatoria, y carga el resultado final (incluyendo ganador por penales si corresponde).
+- **Carga de pronósticos**: cada jugador puede cargar o editar su pronóstico mientras el partido esté abierto y antes del cierre. En partidos de eliminatoria, si pronostica empate debe indicar quién gana por penales.
 - **Cálculo automático de puntos**:
   - 6 puntos por acertar el resultado exacto.
   - 3 puntos por acertar ganador o empate (sin exacto).
   - 1 punto por participar.
+  - En eliminatorias con empate: si se acierta marcador y ganador por penales, 6 puntos; si se acierta marcador pero no el ganador por penales, 3 puntos (o 6 sin premio si nadie acertó el exacto completo con penales).
 - **Premios por partido**: cobran quienes aciertan el resultado exacto.
   - Si hay varios ganadores exactos, cada uno recibe el premio base.
   - Si hay un solo ganador exacto, el premio se duplica (25.000 → 50.000, 30.000 → 60.000, 50.000 → 100.000, etc.).

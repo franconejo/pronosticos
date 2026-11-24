@@ -46,10 +46,11 @@ app.get('/', async (c) => {
             <div class="row" style="justify-content:space-between; align-items:center;">
               <h3 style="margin:0">${m.home_team} vs ${m.away_team}</h3>
               <span class="badge">${m.status === 'finished' ? 'Finalizado' : open ? 'Abierto' : 'Cerrado'}</span>
+              ${m.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''}
             </div>
             <p class="small">Inicio: ${formatDateTime(m.kickoff_at)} · Cierra: ${formatDateTime(m.closes_at)} · Premio base: ${m.base_prize.toLocaleString('es-PY')} Gs</p>
-            ${m.status === 'finished' ? html`<p><strong>Resultado:</strong> ${m.home_score} - ${m.away_score}</p>` : ''}
-            ${p ? html`<p><strong>Tu pronóstico:</strong> ${p.home_score} - ${p.away_score} ${p.points != null ? html`· <span class="ok">${p.points} pts</span> · Premio: ${p.prize.toLocaleString('es-PY')} Gs` : ''}</p>` : ''}
+            ${m.status === 'finished' ? html`<p><strong>Resultado:</strong> ${m.home_score} - ${m.away_score}${m.penalty_winner ? html` <span class="badge">Penales: ${m.penalty_winner === 'home' ? m.home_team : m.away_team}</span>` : ''}</p>` : ''}
+            ${p ? html`<p><strong>Tu pronóstico:</strong> ${p.home_score} - ${p.away_score}${p.penalty_winner ? ` (${p.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''} ${p.points != null ? html`· <span class="ok">${p.points} pts</span> · Premio: ${p.prize.toLocaleString('es-PY')} Gs` : ''}</p>` : ''}
             <p><a href="/partidos/${m.id}">${open ? 'Cargar / ver pronóstico' : 'Ver detalle'}</a></p>
           </div>`;
       })}

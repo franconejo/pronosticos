@@ -11,7 +11,7 @@ type LayoutProps = {
 
 export function layout({ title, user, body, flash }: LayoutProps) {
   const appName = 'Juego del Pronóstico';
-  const description = 'Juego del Pronóstico, auspiciado por Caballeros del Ajedrez Paraguay y la Asociación Paraguaya de Ajedrecistas.';
+  const description = 'Auspiciado por Caballeros del Ajedrez Paraguay y la Asociación Paraguaya de Ajedrecistas.';
   const pageTitle = `${title} - ${appName}`;
   return html`<!doctype html>
 <html lang="es">

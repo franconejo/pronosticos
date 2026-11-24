@@ -21,9 +21,14 @@ export function formatDateTime(iso: string): string {
   });
 }
 
-export function toInputDateTimeLocal(iso: string): string {
+export function parseParaguayDateTimeLocal(value: string): string {
+  // datetime-local viene sin zona horaria; lo interpretamos como hora de Paraguay (UTC-3).
+  if (!value) return '';
+  const v = value.trim();
+  const withSeconds = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v) ? `${v}:00` : v;
+  const hasZone = /([zZ]|[+-]\d{2}:\d{2})$/.test(withSeconds);
+  const iso = hasZone ? withSeconds : `${withSeconds}-03:00`;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return d.toISOString();
 }

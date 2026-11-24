@@ -4,7 +4,7 @@ import type { D1PreparedStatement } from '@cloudflare/workers-types';
 import type { Bindings, Variables, Match } from '../types';
 import { layout } from '../views/layout';
 import { requireAdmin, hashPin, createId } from '../lib/auth';
-import { nowIso, formatDateTime, monthKey } from '../lib/time';
+import { nowIso, formatDateTime, monthKey, parseParaguayDateTimeLocal } from '../lib/time';
 import { calcMatchResults } from '../lib/scoring';
 import { calcMatchPrizes, suggestMonthlyPayouts } from '../lib/prizes';
 
@@ -38,8 +38,8 @@ app.get('/', async (c) => {
       <form method="post" action="/admin/partidos" class="grid grid-2">
         <label>Local <input name="home_team" required /></label>
         <label>Visitante <input name="away_team" required /></label>
-        <label>Inicio (ISO o local) <input name="kickoff_at" type="datetime-local" required /></label>
-        <label>Cierre pronósticos <input name="closes_at" type="datetime-local" required /></label>
+        <label>Inicio del partido (hora Paraguay) <input name="kickoff_at" type="datetime-local" required /></label>
+        <label>Cierre de pronósticos (hora Paraguay) <input name="closes_at" type="datetime-local" required /></label>
         <label>Premio base (Gs)
           <select name="base_prize">
             <option value="25000">25.000</option>
@@ -105,8 +105,8 @@ app.post('/partidos', async (c) => {
   const form = await c.req.parseBody();
   const homeTeam = String(form.home_team || '').trim();
   const awayTeam = String(form.away_team || '').trim();
-  const kickoffAt = new Date(String(form.kickoff_at)).toISOString();
-  const closesAt = new Date(String(form.closes_at)).toISOString();
+  const kickoffAt = parseParaguayDateTimeLocal(String(form.kickoff_at));
+  const closesAt = parseParaguayDateTimeLocal(String(form.closes_at));
   const basePrize = Number(form.base_prize || 25000);
 
   if (!homeTeam || !awayTeam || !kickoffAt || !closesAt) {

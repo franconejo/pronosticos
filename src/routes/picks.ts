@@ -36,13 +36,30 @@ app.get('/partidos/:id', async (c) => {
       ).all<any>()
     : { results: [] as any[] };
 
-  const showAll = match.status !== 'open' || !open;
+  const isAdmin = user?.role === 'admin';
+  const showAll = isAdmin || match.status !== 'open' || !open;
   const allPreds = showAll
     ? await c.env.DB.prepare(
         `SELECT p.*, u.nick FROM predictions p JOIN users u ON u.id = p.user_id
-         WHERE p.match_id = ? ORDER BY p.points DESC, u.nick ASC`,
+         WHERE p.match_id = ? ORDER BY u.nick ASC`,
       ).bind(id).all<any>()
     : { results: [] as any[] };
+
+  const formatPick = (p: any) => {
+    if (p.home_score === p.away_score) {
+      const pen = p.penalty_winner ? ` (${p.penalty_winner === 'home' ? match.home_team : match.away_team})` : '';
+      return `Empate ${p.home_score} a ${p.away_score}${pen}`;
+    }
+    if (p.home_score > p.away_score) return `${match.home_team} ${p.home_score} a ${p.away_score}`;
+    return `${match.away_team} ${p.home_score} a ${p.away_score}`;
+  };
+
+  const shareText = [
+    `*${match.home_team} vs ${match.away_team}*`,
+    ...(allPreds.results || []).map((p: any) => `*${p.nick}* ${formatPick(p)}`),
+    '',
+    '*Pronostica en:* https://pronostico.eibrapp.com.py',
+  ].join('\n');
 
   const body = html`
     <div class="card">
@@ -109,7 +126,15 @@ app.get('/partidos/:id', async (c) => {
 
     ${showAll ? html`
     <div class="card">
-      <h2>Pronósticos del partido</h2>
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <h2 style="margin:0">Pronósticos del partido</h2>
+        ${isAdmin ? html`
+        <div class="row">
+          <button type="button" onclick="(async()=>{const t=document.getElementById('wa-share');try{await navigator.clipboard.writeText(t.value);this.textContent='Copiado';setTimeout(()=>this.textContent='Copiar para WhatsApp',1500);}catch(e){t.style.display='block';t.select();document.execCommand('copy');this.textContent='Copiado';setTimeout(()=>{this.textContent='Copiar para WhatsApp';t.style.display='none';},1500);}}).call(this)">Copiar para WhatsApp</button>
+          <a class="badge" href="https://wa.me/?text=${encodeURIComponent(shareText)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        </div>` : ''}
+      </div>
+      ${isAdmin ? html`<textarea id="wa-share" style="display:none;width:100%;height:140px;margin-top:8px">${shareText}</textarea>` : ''}
       <table>
         <thead><tr><th>Nick</th><th>Pronóstico</th><th>Puntos</th><th>Premio</th></tr></thead>
         <tbody>

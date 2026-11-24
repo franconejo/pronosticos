@@ -74,22 +74,22 @@ app.get('/partidos/:id', async (c) => {
     <div class="card">
       <h1>${match.home_team} vs ${match.away_team}</h1>
       <div style="margin:8px 0 12px">
-        <div style="display:flex;height:18px;border-radius:999px;overflow:hidden;border:1px solid #334155;background:#1f2937">
+        <div style="display:flex;height:18px;border-radius:999px;overflow:hidden;border:1px solid #E5E7EB;background:#F1F5F9">
           <div style="width:${pct(localPctCount)}%;background:#3b82f6" title="${match.home_team}: ${pct(localPctCount)}%"></div>
           <div style="width:${pct(drawPctCount)}%;background:#e5e7eb" title="Empate: ${pct(drawPctCount)}%"></div>
           <div style="width:${pct(awayPctCount)}%;background:#ef4444" title="${match.away_team}: ${pct(awayPctCount)}%"></div>
         </div>
         <div class="small" style="display:flex;justify-content:space-between;gap:8px;margin-top:4px">
-          <span style="color:#93c5fd">${match.home_team}: ${pct(localPctCount)}%</span>
-          <span style="color:#e5e7eb">Empate: ${pct(drawPctCount)}%</span>
-          <span style="color:#fca5a5">${match.away_team}: ${pct(awayPctCount)}%</span>
+          <span style="color:#2563EB">${match.home_team}: ${pct(localPctCount)}%</span>
+          <span style="color:#475569">Empate: ${pct(drawPctCount)}%</span>
+          <span style="color:#DC2626">${match.away_team}: ${pct(awayPctCount)}%</span>
         </div>
         <div class="small muted">${totalStats} pronóstico${totalStats === 1 ? '' : 's'}</div>
       </div>
       <p class="small">Inicio: ${formatDateTime(match.kickoff_at)} · Cierra: ${formatDateTime(match.closes_at)}</p>
       <p>Premio base: <strong>${match.base_prize.toLocaleString('es-PY')} Gs</strong> · Si hay un solo ganador exacto: <strong>${(match.base_prize * 2).toLocaleString('es-PY')} Gs</strong></p>
-      <p>Estado: <span class="badge">${match.status}</span> ${match.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''} ${open ? html`<span class="ok">Aceptando pronósticos</span>` : html`<span class="muted">Pronósticos cerrados</span>`}</p>
-      ${match.status === 'finished' ? html`<p><strong>Resultado final:</strong> ${match.home_score} - ${match.away_score}${match.penalty_winner ? html` <span class="badge">Penales: ${match.penalty_winner === 'home' ? match.home_team : match.away_team}</span>` : ''}</p>` : ''}
+      <p>Estado: <span class="badge" style="${match.status === 'finished' ? '' : open ? 'background:#E8F5EC;color:#15803D;border-color:#CDE7D6' : 'background:#FEF3C7;color:#92400E;border-color:#FDE68A'}">${match.status === 'finished' ? 'Finalizado' : open ? 'Abierto' : 'Cerrado'}</span> ${match.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''} ${open ? html`<span class="ok">Aceptando pronósticos</span>` : html`<span class="muted">Pronósticos cerrados</span>`}</p>
+      ${match.status === 'finished' ? html`<p><strong>Resultado final:</strong> <span class="result-highlight">${match.home_score} - ${match.away_score}</span>${match.penalty_winner ? html` <span class="badge">Penales: ${match.penalty_winner === 'home' ? match.home_team : match.away_team}</span>` : ''}</p>` : ''}
     </div>
 
     <div class="card">

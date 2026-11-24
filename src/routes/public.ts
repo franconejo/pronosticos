@@ -54,7 +54,7 @@ app.get('/', async (c) => {
           <div class="card">
             <div class="row" style="justify-content:space-between; align-items:center;">
               <h3 style="margin:0">${m.home_team} vs ${m.away_team}</h3>
-              <span class="badge">${m.status === 'finished' ? 'Finalizado' : open ? 'Abierto' : 'Cerrado'}</span>
+              <span class="badge" style="${m.status === 'finished' ? '' : open ? 'background:#E8F5EC;color:#15803D;border-color:#CDE7D6' : 'background:#FEF3C7;color:#92400E;border-color:#FDE68A'}">${m.status === 'finished' ? 'Finalizado' : open ? 'Abierto' : 'Cerrado'}</span>
               ${m.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''}
             </div>
             ${(() => {
@@ -64,20 +64,20 @@ app.get('/', async (c) => {
               const dp = total ? Math.round((Number(s.dr) * 1000) / total) / 10 : 0;
               const ap = total ? Math.round((Number(s.aw) * 1000) / total) / 10 : 0;
               return html`<div style="margin:8px 0 10px">
-                <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;border:1px solid #334155;background:#1f2937">
+                <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;border:1px solid #E5E7EB;background:#F1F5F9">
                   <div style="width:${hp}%;background:#3b82f6"></div>
                   <div style="width:${dp}%;background:#e5e7eb"></div>
                   <div style="width:${ap}%;background:#ef4444"></div>
                 </div>
                 <div class="small" style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">
-                  <span style="color:#93c5fd">${m.home_team}: ${hp}%</span>
-                  <span style="color:#e5e7eb">Empate: ${dp}%</span>
-                  <span style="color:#fca5a5">${m.away_team}: ${ap}%</span>
+                  <span style="color:#2563EB">${m.home_team}: ${hp}%</span>
+                  <span style="color:#475569">Empate: ${dp}%</span>
+                  <span style="color:#DC2626">${m.away_team}: ${ap}%</span>
                 </div>
               </div>`;
             })()}
             <p class="small">Inicio: ${formatDateTime(m.kickoff_at)} · Cierra: ${formatDateTime(m.closes_at)} · Premio base: ${m.base_prize.toLocaleString('es-PY')} Gs</p>
-            ${m.status === 'finished' ? html`<p><strong>Resultado:</strong> ${m.home_score} - ${m.away_score}${m.penalty_winner ? html` <span class="badge">Penales: ${m.penalty_winner === 'home' ? m.home_team : m.away_team}</span>` : ''}</p>` : ''}
+            ${m.status === 'finished' ? html`<p><strong>Resultado:</strong> <span class="result-highlight">${m.home_score} - ${m.away_score}</span>${m.penalty_winner ? html` <span class="badge">Penales: ${m.penalty_winner === 'home' ? m.home_team : m.away_team}</span>` : ''}</p>` : ''}
             ${p ? html`<p><strong>Tu pronóstico:</strong> ${p.home_score} - ${p.away_score}${p.penalty_winner ? ` (${p.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''} ${p.points != null ? html`· <span class="ok">${p.points} pts</span> · Premio: ${p.prize.toLocaleString('es-PY')} Gs` : ''}</p>` : ''}
             <p><a href="/partidos/${m.id}">${open ? 'Cargar / ver pronóstico' : 'Ver detalle'}</a></p>
           </div>`;

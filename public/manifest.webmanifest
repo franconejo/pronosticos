@@ -1,0 +1,10 @@
+{
+  "name": "Juego del Pronóstico",
+  "short_name": "Pronóstico",
+  "description": "Auspiciado por Caballeros del Ajedrez Paraguay y la Asociación Paraguaya de Ajedrecistas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F5F7",
+  "theme_color": "#171717",
+  "lang": "es-PY"
+}

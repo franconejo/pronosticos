@@ -65,7 +65,7 @@ app.get('/', async (c) => {
               <td>${formatDateTime(m.kickoff_at)}</td>
               <td>${formatDateTime(m.closes_at)}</td>
               <td>${m.base_prize.toLocaleString('es-PY')}</td>
-              <td>${m.status}</td>
+              <td><span class="badge" style="${m.status === 'finished' ? '' : m.status === 'open' ? 'background:#E8F5EC;color:#15803D;border-color:#CDE7D6' : 'background:#FEF3C7;color:#92400E;border-color:#FDE68A'}">${m.status === 'open' ? 'Abierto' : m.status === 'closed' ? 'Cerrado' : 'Finalizado'}</span></td>
               <td>${m.status === 'finished' ? html`${m.home_score}-${m.away_score}${m.penalty_winner ? ` (${m.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''}` : '-'}${m.is_knockout ? html` <span class="badge">KO</span>` : ''}</td>
               <td>
                 ${m.status !== 'finished' ? html`

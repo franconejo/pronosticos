@@ -17,7 +17,10 @@ export function layout({ title, user, body, flash }: LayoutProps) {
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171717" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>${pageTitle}</title>
   <meta name="description" content="${description}" />
   <meta property="og:type" content="website" />
@@ -27,27 +30,40 @@ export function layout({ title, user, body, flash }: LayoutProps) {
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="${appName}" />
   <meta name="twitter:description" content="${description}" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <strong><a href="/">${appName}</a></strong>
-        <div class="small">Pronósticos entre amigos</div>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner wrap">
+        <a class="brand" href="/">
+          <span class="brand-mark">JP</span>
+          <span class="brand-text">
+            <strong>${appName}</strong>
+            <span>Caballeros del Ajedrez Paraguay</span>
+          </span>
+        </a>
+        <nav class="main-nav" aria-label="Principal">
+          <a href="/" class="nav-link">Partidos</a>
+          <a href="/tabla" class="nav-link">Tabla</a>
+          ${user?.role === 'admin' ? html`<a href="/admin" class="nav-link">Admin</a>` : ''}
+          ${user
+            ? html`<form class="inline" method="post" action="/logout"><button class="nav-link nav-button" type="submit">Salir</button></form>`
+            : html`<a href="/registro" class="nav-link">Registro</a><a href="/login" class="nav-link nav-primary">Entrar</a>`}
+        </nav>
       </div>
-      <nav>
-        <a href="/">Partidos</a>
-        <a href="/tabla">Tabla mensual</a>
-        ${user?.role === 'admin' ? html`<a href="/admin">Admin</a>` : ''}
-        ${user
-          ? html`<span class="badge">${user.nick}</span>
-              <form class="inline" method="post" action="/logout"><button class="secondary" type="submit">Salir</button></form>`
-          : html`<a href="/login">Entrar</a> <a href="/registro">Registrarme</a>`}
-      </nav>
     </header>
-    ${flash ? html`<div class="flash ${flash.type}">${flash.message}</div>` : ''}
-    ${raw(body)}
+
+    <main class="page wrap">
+      ${user ? html`<div class="user-strip"><span class="user-chip">Sesión: <strong>${user.nick}</strong></span></div>` : ''}
+      ${flash ? html`<div class="flash ${flash.type}" role="status">${flash.message}</div>` : ''}
+      ${raw(body)}
+    </main>
+
+    <footer class="site-footer wrap">
+      <span>Auspiciado por Caballeros del Ajedrez Paraguay y la Asociación Paraguaya de Ajedrecistas.</span>
+    </footer>
   </div>
 </body>
 </html>`;

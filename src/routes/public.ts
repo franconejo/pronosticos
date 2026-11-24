@@ -30,6 +30,15 @@ app.get('/', async (c) => {
     myPreds = Object.fromEntries((rows.results || []).map((p) => [p.match_id, p]));
   }
 
+  const statsRows = await c.env.DB.prepare(
+    `SELECT match_id,
+            SUM(CASE WHEN home_score > away_score THEN 1 ELSE 0 END) as hw,
+            SUM(CASE WHEN home_score = away_score THEN 1 ELSE 0 END) as dr,
+            SUM(CASE WHEN home_score < away_score THEN 1 ELSE 0 END) as aw,
+            COUNT(*) as total
+     FROM predictions GROUP BY match_id`,
+  ).all<any>();
+  const statsMap = Object.fromEntries((statsRows.results || []).map((r: any) => [r.match_id, r]));
   const now = nowIso();
   const body = html`
     <div class="card">
@@ -48,6 +57,25 @@ app.get('/', async (c) => {
               <span class="badge">${m.status === 'finished' ? 'Finalizado' : open ? 'Abierto' : 'Cerrado'}</span>
               ${m.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''}
             </div>
+            ${(() => {
+              const s = statsMap[m.id] || { hw: 0, dr: 0, aw: 0, total: 0 };
+              const total = Number(s.total || 0);
+              const hp = total ? Math.round((Number(s.hw) * 1000) / total) / 10 : 0;
+              const dp = total ? Math.round((Number(s.dr) * 1000) / total) / 10 : 0;
+              const ap = total ? Math.round((Number(s.aw) * 1000) / total) / 10 : 0;
+              return html`<div style="margin:8px 0 10px">
+                <div style="display:flex;height:14px;border-radius:999px;overflow:hidden;border:1px solid #334155;background:#1f2937">
+                  <div style="width:${hp}%;background:#3b82f6"></div>
+                  <div style="width:${dp}%;background:#e5e7eb"></div>
+                  <div style="width:${ap}%;background:#ef4444"></div>
+                </div>
+                <div class="small" style="display:flex;justify-content:space-between;gap:8px;margin-top:3px">
+                  <span style="color:#93c5fd">${m.home_team}: ${hp}%</span>
+                  <span style="color:#e5e7eb">Empate: ${dp}%</span>
+                  <span style="color:#fca5a5">${m.away_team}: ${ap}%</span>
+                </div>
+              </div>`;
+            })()}
             <p class="small">Inicio: ${formatDateTime(m.kickoff_at)} · Cierra: ${formatDateTime(m.closes_at)} · Premio base: ${m.base_prize.toLocaleString('es-PY')} Gs</p>
             ${m.status === 'finished' ? html`<p><strong>Resultado:</strong> ${m.home_score} - ${m.away_score}${m.penalty_winner ? html` <span class="badge">Penales: ${m.penalty_winner === 'home' ? m.home_team : m.away_team}</span>` : ''}</p>` : ''}
             ${p ? html`<p><strong>Tu pronóstico:</strong> ${p.home_score} - ${p.away_score}${p.penalty_winner ? ` (${p.penalty_winner === 'home' ? m.home_team : m.away_team} pen.)` : ''} ${p.points != null ? html`· <span class="ok">${p.points} pts</span> · Premio: ${p.prize.toLocaleString('es-PY')} Gs` : ''}</p>` : ''}

@@ -36,6 +36,15 @@ app.get('/partidos/:id', async (c) => {
       ).all<any>()
     : { results: [] as any[] };
 
+  const statsRows = await c.env.DB.prepare('SELECT home_score, away_score FROM predictions WHERE match_id=?')
+    .bind(id).all<any>();
+  const stats = statsRows.results || [];
+  const totalStats = stats.length;
+  const localPctCount = stats.filter((p: any) => p.home_score > p.away_score).length;
+  const drawPctCount = stats.filter((p: any) => p.home_score === p.away_score).length;
+  const awayPctCount = stats.filter((p: any) => p.home_score < p.away_score).length;
+  const pct = (n: number) => (totalStats ? Math.round((n * 1000) / totalStats) / 10 : 0);
+
   const isAdmin = user?.role === 'admin';
   const showAll = isAdmin || match.status !== 'open' || !open;
   const allPreds = showAll
@@ -64,6 +73,19 @@ app.get('/partidos/:id', async (c) => {
   const body = html`
     <div class="card">
       <h1>${match.home_team} vs ${match.away_team}</h1>
+      <div style="margin:8px 0 12px">
+        <div style="display:flex;height:18px;border-radius:999px;overflow:hidden;border:1px solid #334155;background:#1f2937">
+          <div style="width:${pct(localPctCount)}%;background:#3b82f6" title="${match.home_team}: ${pct(localPctCount)}%"></div>
+          <div style="width:${pct(drawPctCount)}%;background:#e5e7eb" title="Empate: ${pct(drawPctCount)}%"></div>
+          <div style="width:${pct(awayPctCount)}%;background:#ef4444" title="${match.away_team}: ${pct(awayPctCount)}%"></div>
+        </div>
+        <div class="small" style="display:flex;justify-content:space-between;gap:8px;margin-top:4px">
+          <span style="color:#93c5fd">${match.home_team}: ${pct(localPctCount)}%</span>
+          <span style="color:#e5e7eb">Empate: ${pct(drawPctCount)}%</span>
+          <span style="color:#fca5a5">${match.away_team}: ${pct(awayPctCount)}%</span>
+        </div>
+        <div class="small muted">${totalStats} pronóstico${totalStats === 1 ? '' : 's'}</div>
+      </div>
       <p class="small">Inicio: ${formatDateTime(match.kickoff_at)} · Cierra: ${formatDateTime(match.closes_at)}</p>
       <p>Premio base: <strong>${match.base_prize.toLocaleString('es-PY')} Gs</strong> · Si hay un solo ganador exacto: <strong>${(match.base_prize * 2).toLocaleString('es-PY')} Gs</strong></p>
       <p>Estado: <span class="badge">${match.status}</span> ${match.is_knockout ? html`<span class="badge">Eliminatoria</span>` : ''} ${open ? html`<span class="ok">Aceptando pronósticos</span>` : html`<span class="muted">Pronósticos cerrados</span>`}</p>

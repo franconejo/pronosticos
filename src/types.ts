@@ -62,6 +62,7 @@ export interface Prediction {
   penalty_winner: 'home' | 'away' | null;
   points: number | null;
   prize: number;
+  edit_count: number;
   created_at: string;
   updated_at: string;
 }

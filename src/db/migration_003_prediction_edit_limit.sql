@@ -1,0 +1,1 @@
+ALTER TABLE predictions ADD COLUMN edit_count INTEGER NOT NULL DEFAULT 0;

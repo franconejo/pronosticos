@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS predictions (
   penalty_winner TEXT CHECK (penalty_winner IN ('home', 'away')),
   points INTEGER,
   prize INTEGER NOT NULL DEFAULT 0,
+  edit_count INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (match_id, user_id)

@@ -73,7 +73,7 @@ app.get('/partidos/:id', async (c) => {
     <div class="card">
       <h2>Tu pronóstico</h2>
       ${!user ? html`<p>Tenés que <a href="/login">entrar</a> para pronosticar.</p>` : ''}
-      ${user && open ? html`
+      ${user && open && (!myPred || (myPred.edit_count ?? 0) < 1) ? html`
         <form method="post" action="/partidos/${match.id}/pronostico" class="row">
           <label>${match.home_team}
             <input type="number" name="home_score" min="0" max="99" required value="${myPred?.home_score ?? ''}" />
@@ -91,7 +91,11 @@ app.get('/partidos/:id', async (c) => {
           </label>` : ''}
           <button type="submit">${myPred ? 'Actualizar pronóstico' : 'Guardar pronóstico'}</button>
         </form>
-        <p class="small">Podés editarlo mientras el partido esté abierto y antes del cierre.</p>
+        <p class="small">${myPred ? 'Ya cargaste tu pronóstico: te queda 1 cambio antes del cierre.' : 'Podés cargar tu pronóstico una vez y después cambiarlo solo 1 vez antes del cierre.'}</p>
+      ` : ''}
+      ${user && open && myPred && (myPred.edit_count ?? 0) >= 1 ? html`
+        <p>Cargaste: <strong>${myPred.home_score} - ${myPred.away_score}${myPred.penalty_winner ? ` (${myPred.penalty_winner === 'home' ? match.home_team : match.away_team} por penales)` : ''}</strong></p>
+        <p class="small">Ya usaste el único cambio permitido para este pronóstico.</p>
       ` : ''}
       ${user && !open ? html`
         <p>${myPred ? html`Cargaste: <strong>${myPred.home_score} - ${myPred.away_score}${myPred.penalty_winner ? ` (${myPred.penalty_winner === 'home' ? match.home_team : match.away_team} por penales)` : ''}</strong>` : 'No cargaste pronóstico para este partido.'}
@@ -184,17 +188,26 @@ app.post('/partidos/:id/pronostico', async (c) => {
     penaltyWinner = pw;
   }
 
+  const existing = await c.env.DB.prepare(
+    'SELECT edit_count FROM predictions WHERE match_id=? AND user_id=?',
+  ).bind(id, user.id).first<{ edit_count: number }>();
+
+  if (existing) {
+    if ((existing.edit_count ?? 0) >= 1) {
+      return c.redirect(`/partidos/${id}?err=` + encodeURIComponent('Ya usaste el único cambio permitido para este pronóstico'));
+    }
+    await c.env.DB.prepare(
+      `UPDATE predictions
+       SET home_score=?, away_score=?, penalty_winner=?, updated_at=?, edit_count=edit_count+1
+       WHERE match_id=? AND user_id=?`,
+    ).bind(home, away, penaltyWinner, now, id, user.id).run();
+    return c.redirect(`/partidos/${id}?ok=` + encodeURIComponent('Pronóstico actualizado (ya no se puede volver a cambiar)'));
+  }
+
   await c.env.DB.prepare(
-    `INSERT INTO predictions (match_id, user_id, home_score, away_score, penalty_winner, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(match_id, user_id) DO UPDATE SET
-       home_score=excluded.home_score,
-       away_score=excluded.away_score,
-       penalty_winner=excluded.penalty_winner,
-       updated_at=excluded.updated_at`,
-  )
-    .bind(id, user.id, home, away, penaltyWinner, now, now)
-    .run();
+    `INSERT INTO predictions (match_id, user_id, home_score, away_score, penalty_winner, points, prize, edit_count, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, NULL, 0, 0, ?, ?)`,
+  ).bind(id, user.id, home, away, penaltyWinner, now, now).run();
 
   return c.redirect(`/partidos/${id}?ok=` + encodeURIComponent('Pronóstico guardado'));
 });
